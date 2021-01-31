@@ -129,7 +129,7 @@
 % place logo to right of centered title
 \makeatletter
 \renewcommand\TP@maketitle{%
-    \tikz[remember picture,overlay]\node[anchor=south east,xshift=0.43\linewidth,inner sep=0pt, yshift=-4.25cm] {%
+    \tikz[remember picture,overlay]\node[anchor=south east,xshift=0.42\linewidth,inner sep=0pt, yshift=-1.5cm] {%
        \@titlegraphic
     };
    \centering
@@ -143,8 +143,8 @@
 %        {\LARGE \@institute}
 %       \vspace*{1.75em}
     \end{minipage}%
-    \tikz[remember picture,overlay]\node[anchor=south east,xshift=0.53\linewidth,inner sep=0pt, yshift=-4.25cm] {%
-       \includegraphics[width=0.09\textwidth]{initial_drone_flight_qr_code}
+    \tikz[remember picture,overlay]\node[anchor=south east,xshift=0.53\linewidth,inner sep=0pt, yshift=-1.5cm] {%
+       \includegraphics[width=0.055\textwidth]{initial_drone_flight_qr_code}
     };
 }
 \makeatother

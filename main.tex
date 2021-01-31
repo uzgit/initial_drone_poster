@@ -1,4 +1,4 @@
-\documentclass[a1paper, landscape, blockverticalspace=1cm]{tikzposter}
+\documentclass[a1paper, landscape, blockverticalspace=1cm, 14pt]{tikzposter}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
 \usepackage{amsfonts}
@@ -14,6 +14,7 @@
 \usepackage{lipsum}
 \usepackage{cancel}
 \usepackage{mwe} % for placeholder images
+\usepackage{graphbox}
 
 \addbibresource{refs.bib}
 
@@ -38,26 +39,28 @@
 }}}
 \makeatother
 
-\title{Construction/Operation of Two Hexacopters\newline for Autonomous Landing}
+\title{\Huge Construction/Operation of Two Hexacopters for Autonomous Landing}
 \author{Author}
 \institute{Reykjavík University}
-\titlegraphic{\includegraphics[width=0.09\textwidth]{ru_logo_transparent.png}}
+\titlegraphic{\includegraphics[width=0.055\textwidth]{ru_logo_transparent.png}}
 
 % begin document
 \begin{document}
 \maketitle
 \centering
 \begin{columns}
+
     \column{0.33}
     \block{Introduction}
     {
         \normalsize
         Two Tarot 680 hexacopters allow real world testing of autonomous navigation techniques.
-        This project tests an autonomous landing algorithm based on computer vision and fiducial markers.
+        This project tests an autonomous landing algorithm based on computer vision and fiducial markers.\cite{AL_thesis}
         A landing pad is marked with fiducial markers which are recognized by the drone's onboard camera.
         The gimbal automatically aims the camera at the landing pad to track it during descent.
         The landing software then directs the drone to descend towards the landing pad.
     }
+
     \block{Components}
     {
         \normalsize
@@ -79,7 +82,6 @@
         The two drones differ in their companion boards: one has an NVIDIA Jetson Nano, and the other has a Google Coral Dev.
     }
 
-    \column{0.33}
     \block{3D-Printed Components}
     {
         \normalsize
@@ -95,48 +97,103 @@
         \end{tikzfigure}
     }
 
-    \block{Landing Pad}{
+    \column{0.33}
+    \block{Power and Data Flow}
+    {
         \normalsize
-        \begin{minipage}[t]{0.7\linewidth}
-            Fiducial markers (top: April Tag, bottom: WhyCon) allow the drone to determine its position relative to the landing pad using only a normal RGB camera.
+        The drones have two isolated power systems - an 11.1V system (regulated to 5V by the BEC) for the electronics, and a 22.2V system for the motors and gimbal.
+        This is because the electronics require a very stable power source to function reliably, and the motors can suddenly draw large currents, reducing the apparent voltage unpredictably.
+        \begin{tikzfigure}
+            \includegraphics[width=0.7\linewidth]{hardware.png}
+        \end{tikzfigure}
+
+        Data flow for the autonomous landing task begins at the camera module, from which high-resolution video is fed into the companion board.
+        A program \texttt{gscam} resizes the video to a lower resolution to reduce computational requirements, and pipes the resized video to the \texttt{whycon\_ros} module for analysis.
+        The \texttt{landing\_controller} module performs coordinate system transforms to generate a target position for the drone based on the detected position of the landing pad.
+        The \texttt{gimbal\_controller} module sends control signals (through the flight controller via the \texttt{rc/override} ROS topic) to the gimbal in order to center the landing pad in the camera's field of view.
+        When no landing pad is detected, the gimbal is controlled manually by the operator.
+        The \texttt{MAVROS} module receives information from the landing and gimbal controllers, translates it into lower-level commands, and passes those commands to the ArduPilot software.
+        ArduPilot sends control signals to the gimbal and speed controllers to make the drone approach and track the landing pad.
+        \begin{tikzfigure}
+            \includegraphics[width=0.7\linewidth]{data_flow.png}
+        \end{tikzfigure}
+    }
+
+    \block{Landing Pad Design and Detection Performance}
+    {
+        \normalsize
+        \begin{minipage}[t]{0.75\linewidth}
+
+            Fiducial markers (top: April Tag\cite{apriltag_paper}, bottom: WhyCon\cite{whycon_paper}) allow the drone to determine its position relative to the landing pad using only a normal RGB camera.
             The larger WhyCon marker is easier for the system to recognize at long range, while the April Tag marker provides more accurate pose estimates at close range.
             The April Tag marker is positioned in front of the WhyCon marker in order to keep it in the field of view of the camera at close range.
             The drone touches down in the center of the WhyCon marker.
+            After initial testing, the April Tag system required substantial computational resources on the companion board and was therefore removed.
+            The final landing pad design includes only a WhyCon marker.
+            Fig. \ref{fig:gimbal_controller_performance} shows the performance of the gimbal controller in aiming the camera at the landing pad in a 640x480 frame.
+            These graphs show that the camera is successfully aimed at the landing pad (with some typical PID oscillation) in most cases.
+            Cases where the landing pad is not fully centered are those where the gimbal reaches its rotational limits.
+            The oscillation is a result of high PID gains (for quick correction) but does not adversely affect the detection performance.
+
         \end{minipage}
+        \hfill
         \begin{adjustbox}{valign=t}
-            \begin{minipage}[t]{0.28\linewidth}
-                \vspace{-1cm}
-                \begin{tikzfigure}[Landing Pad]
-                    \fbox{\includegraphics[angle=180, width=\linewidth]{landing_pad.png}}
+            \begin{minipage}[t]{0.2\linewidth}
+%                \vspace{-1cm}
+                \begin{tikzfigure}[Initial Landing Pad Design]
+                    \fbox{\includegraphics[angle=180, width=0.8\linewidth]{landing_pad.png}}
                 \end{tikzfigure}
             \end{minipage}
         \end{adjustbox}
+
+        \vspace{-0.5cm}
+        \begin{tikzfigure}[Performance of Gimbal Controller in Centering the Landing Pad in the Camera's FOV]
+            \includegraphics[width=0.45\linewidth]{coral_gimbal_performance_x_axis.png}
+            \includegraphics[width=0.45\linewidth]{coral_gimbal_performance_y_axis.png}
+            \label{fig:gimbal_controller_performance}
+        \end{tikzfigure}
     }
 
     \column{0.33}
-    \block{Performance}
+    \block{Flight and Landing Performance}
     {
         \normalsize
         Both drones have stable and reliable performance even in high wind, with safe flight times of roughly 15 minutes.
         They have enough power to lift additional sensors/electronics.
-        The April Tag system was computationally heavy, especially for this embedded scenario, and was therefore replaced by the WhyCon system entirely.
         The cameras are able to aim at the landing pad reliably in a laboratory setting, however the Jetson Nano had power issues in field testing.
         The Google Coral drone was able to reliably aim the camera, generate position targets and approach the landing pad autonomously.
         Because of an issue with the WhyCon marker system, the pose estimation was inaccurate at close range and therefore landing was aborted at the last minute.
         However, this issue is not major and will be addressed in future work.
+        Fig. \ref{fig:stability} visualizes the pitch, roll, and altitude performance of the drone during a hover of about 10 seconds.
+        The pitch and roll vary by about 2.5 degrees (as normal) because of hardware performance and environmental conditions.
+        The altitude varies by about 2 meters as a result of manual control. Fig. \ref{fig:drone_in_flight} shows the drone in flight.
+
+        \begin{tikzfigure}[Pitch, roll, and altitude during hover.]
+            \includegraphics[width=0.45\linewidth]{stability.png}
+            \label{fig:stability}
+        \end{tikzfigure}
 
         \begin{tikzfigure}[Drone in Flight (Scan QR code in top right for video!)]
-            \includegraphics[width=0.9\linewidth]{drone_in_flight.png}
+            \includegraphics[width=0.6\linewidth]{drone_in_flight.png}
+            \label{fig:drone_in_flight}
         \end{tikzfigure}
     }
     
     \block{Future Work}
     {
         \normalsize
-        The next step is to fix the issue with pose estimation at close range.
+        The pose estimation system will be changed to fix its issues that occur when the drone is at close range to the landing pad.
         One possible solution is to attempt to fix the WhyCon system itself.
-        Another solution is to use existing deep learning models such as EfficientPose or PoseCNN to create a new pose estimation system, as the companion boards are designed for embedded deep learning tasks.
-        We will then have a good setup to re-test autonomous landing, and to continue testing more advanced drone tasks.
+        Another solution is to use existing deep learning models (ex.- EfficientPose or PoseCNN) to create a new pose estimation system, as the companion boards are designed for embedded deep learning tasks.\\
+
+        The drones will be tested in different autonomous scenarios, such as more complex point-to-point missions.
+        They will serve as flexible platforms for more specific tasks such as terrain mapping, object tracking, etc.
     }
+
+    \block{References}
+    {
+        \printbibliography[heading=none]
+    }
+
 \end{columns}
 \end{document}
